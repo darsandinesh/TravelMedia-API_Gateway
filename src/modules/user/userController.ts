@@ -18,7 +18,7 @@ export const userController = {
 
             userController.memoryStorage['user'] = JSON.stringify(result.user_data);
 
-            return res.json({data: result });
+            return res.json({ data: result });
         } catch (error) {
             console.log('error in register user --> ', error);
             return res.status(500).json({ error: 'Internal server error' });
@@ -31,7 +31,7 @@ export const userController = {
             const userData = JSON.parse(userController.memoryStorage['user']);
             const operation = 'save_user'
             const result: any = await userRabbitMqClient.produce(userData, operation);
-            return res.json({ success: true, message: 'account created successfully!!!!!' })
+            return res.json({ success: true, data: result });
         } catch (error) {
             console.log('Error in OTP verification:', error);
             return res.status(500).json({ error: 'Internal server error' });
@@ -45,18 +45,16 @@ export const userController = {
     login: async (req: Request, res: Response) => {
         try {
             const data = req.body;
-            const operation = 'user-login';
+            const operation = 'user_login';
 
             const result: any = await userRabbitMqClient.produce(data, operation);
             console.log(result, 'user-login');
 
-            if (!result.success) {
-                return res.status(401).json({ error: 'Login failed' });
+            if (result.success) {
+                const token = generateToken({ id: result.user_data._id, email: result.user_data.email });
+                // res.cookie('token', token, { httpOnly: true, maxAge: 3600000 });
+                result.token = token;
             }
-
-            const token = generateToken({ id: result.user_data._id, email: result.user_data.email });
-            res.cookie('token', token, { httpOnly: true, maxAge: 3600000 });
-            result.token = token;
 
             return res.json(result);
         } catch (error) {
@@ -65,7 +63,54 @@ export const userController = {
         }
     },
 
+    loginWithGoogle: async (req: Request, res: Response) => {
+        try {
+
+            const data = req.body;
+            console.log(data);
+            const operation = 'google_login';
+            const result: any = await userRabbitMqClient.produce(data, operation);
+            console.log(result);
+            return res.json(result);
+
+        } catch (error) {
+
+        }
+    },
+
+    verifyEmail: async (req: Request, res: Response) => {
+        try {
+            console.log('verifyEmail in api-gateway');
+            const operation = 'verify_Email';
+            const data = req.body;
+            const result: any = await userRabbitMqClient.produce(data, operation);
+            console.log(result,'------------------result')
+            return res.json(result);
+        } catch (error) {
+
+        }
+    },
+
+    resetPassword: async (req: Request, res: Response) => {
+        try {
+            console.log(req.body);
+            const data = req.body;
+            const operation = 'reset_password';
+            const result:any = await userRabbitMqClient.produce(data,operation);
+            // const result =  { success: true, message: 'Password changed successfull, Try logging in' };
+            res.json(result);
+        } catch (error) {
+
+        }
+    },
+
     logout: async (req: Request, res: Response) => {
-        // Implement logout logic here
-    }
+        try {
+
+        } catch (error) {
+
+        }
+    },
+
+
 };

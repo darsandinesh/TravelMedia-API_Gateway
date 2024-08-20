@@ -25,9 +25,9 @@ app.use(cookieParser());
 app.use(express.json());
 app.use(cors(corsOptions));
 
-
-app.use('/', userRoutes)
 app.use('/admin', adminRoutes)
+app.use('/', userRoutes)
+
 
 const server = http.createServer(app);
 
