@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Post Upload Modal</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 flex items-center justify-center h-screen">
+
+    <!-- Trigger Button -->
+    <button onclick="openModal()" class="bg-blue-500 text-white px-4 py-2 rounded">Upload Post</button>
+
+    <!-- Modal Background -->
+    <div id="postModal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-50 flex items-center justify-center">
+        <!-- Modal Content -->
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
+            <div class="flex justify-between items-center">
+                <h2 class="text-xl font-semibold">Create a Post</h2>
+                <button onclick="closeModal()" class="text-gray-600 hover:text-gray-900">&times;</button>
+            </div>
+            <form class="mt-4">
+                <!-- File Input -->
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="file">
+                        Upload Image/Video
+                    </label>
+                    <input id="file" type="file" class="border border-gray-300 p-2 w-full rounded focus:outline-none focus:ring-2 focus:ring-blue-400">
+                </div>
+                <!-- Textarea for Caption -->
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="caption">
+                        Caption
+                    </label>
+                    <textarea id="caption" class="border border-gray-300 p-2 w-full rounded focus:outline-none focus:ring-2 focus:ring-blue-400" rows="4" placeholder="Write a caption..."></textarea>
+                </div>
+                <!-- Buttons -->
+                <div class="flex justify-end">
+                    <button type="button" onclick="closeModal()" class="bg-gray-300 text-gray-700 px-4 py-2 rounded mr-2">Cancel</button>
+                    <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Post</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // JavaScript to toggle the modal
+        function openModal() {
+            document.getElementById('postModal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('postModal').classList.add('hidden');
+        }
+    </script>
+
+</body>
+</html>

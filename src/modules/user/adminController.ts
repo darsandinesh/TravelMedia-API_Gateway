@@ -16,6 +16,7 @@ export const AdminController = {
                 const token = generateToken({ id: result.data._id, email: result.data.email });
                 result.token = token;
             }
+            console.log(result)
             return res.json({ result });
         } catch (error) {
             console.log('error in adminlogin', error);
@@ -46,6 +47,26 @@ export const AdminController = {
 
         }
     },
+
+    getNewUsers: async (req: Request, res: Response) => {
+        try {
+            const operation = 'getNewUsers';
+            const result = await adminRabbitMqClient.produce('', operation);
+            res.json(result);
+        } catch (error) {
+
+        }
+    },
+
+    getTotalUsers: async (req: Request, res: Response) => {
+        try {
+            const operation = 'getTotalUsers';
+            const result = await adminRabbitMqClient.produce('', operation);
+            res.json(result);
+        } catch (error) {
+
+        }
+    }
 
 
 }
