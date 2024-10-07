@@ -1,33 +1,28 @@
-import { Server } from 'socket.io';
-import { Server as HttpServer } from 'http';
-import userRabbitMQClient from '../../user/rabbitMQ/client';
-import { Socket } from 'dgram';
+import { Channel } from "amqplib";
+import rabbitMqConfig from "../../../config/rabbitMQconfig";
+import { randomUUID } from "crypto";
+import EventEmitter from "events";
 
-interface User {
-    id: string,
-    _id: string
-}
+export default class Producer {
+    constructor(private channel: Channel, private replyQueueName: string, private eventEmitter: EventEmitter){}
 
-interface RabbitMQResponse<T> {
-    success: boolean;
-    message: string;
-    data?: T
-}
+    async produceMessage(data: any={}, operation:string){
+        const correlationId = randomUUID();
+        this.channel.sendToQueue(rabbitMqConfig.rabbitMQ.queues.messageQueue, Buffer.from(JSON.stringify(data)), {
+            replyTo: this.replyQueueName,
+            correlationId,
+            headers:{function: operation},
+        });
 
-let io: Server;
-
-export const initialzeSocket = (server: HttpServer) => {
-    io = new Server(server, {
-        cors: {
-            origin: 'http://localhost:5173',
-            methods: ["POST", "GET"],
-            credentials: true,
-        }
-    })
-
-    io.on('connection',(socket)=>{
-        console.log('user connected ->',socket.id);
-
-        
-    })
+        return new Promise((resolve, reject)=>{
+            this.eventEmitter.once(correlationId, (message)=>{
+                try {
+                    const reply = JSON.parse(message.content.toString());
+                    resolve(reply);
+                } catch (error) {
+                    reject(error);
+                }
+            })
+        })
+    }
 }

@@ -1,11 +1,13 @@
 import { Request, Response } from 'express';
 import postRabbitMqClient from './rabbitMQ/client';
 import userRabbitMqClient from '../../modules/user/rabbitMQ/client';
+import { sendNotification } from '../../socket/socketServer'
 
 
 interface Post {
     _id: string;
     userId: string;
+    reportPost: string[];
 }
 
 interface User {
@@ -23,6 +25,7 @@ interface data {
     userId: string;
     description: string;
     place: string;
+    postId?: string;
 }
 
 const validImageMimeTypes = ['image/jpeg', 'image/png', 'image/gif'];
@@ -73,10 +76,92 @@ export const postController = {
         }
     },
 
+    editPost: async (req: Request, res: Response) => {
+        try {
+            const data: data = req.body;
+            const images = req.files as { [fieldname: string]: Express.Multer.File[] } | Express.Multer.File[];
+
+            console.log(data);
+            console.log(images);
+
+            if (!data.userId) {
+                return res.status(400).json({ success: false, message: 'UserId is missing' });
+            }
+
+            if (images) {
+                let filesArray: Express.Multer.File[] = [];
+                if (Array.isArray(images)) {
+                    filesArray = images;
+                } else {
+                    filesArray = Object.values(images).flat();
+                }
+
+                for (let file of filesArray) {
+                    if (!validImageMimeTypes.includes(file.mimetype)) {
+                        return res.status(400).json({ error: "Only image files are allowed" });
+                    }
+                }
+            }
+
+            const userId = data.userId;
+            const description = data.description;
+            const place = data.place
+            const postId = data.postId
+
+            const operation = 'edit-post';
+            const response = await postRabbitMqClient.produce(
+                { userId, postId, description, place, images }, operation
+            )
+            console.log(response);
+            res.status(200).json(response);
+        } catch (error) {
+            console.log('Error in the editpost -->', error);
+            return res.status(500).json({ success: false, message: "Error occured while editing the post" })
+        }
+    },
+
+    deletePost: async (req: Request, res: Response) => {
+        try {
+            const id = req.body.postId;
+            const operation = 'deletePost';
+            const result = await postRabbitMqClient.produce(id, operation);
+            res.status(200).json(result);
+
+        } catch (error) {
+            console.log('Error in the deletePost -->', error);
+            return res.status(500).json({ success: false, message: "Error occured while deleting the post" })
+        }
+    },
+
+    reportPost: async (req: Request, res: Response) => {
+        try {
+            const data = req.body;
+            const operation = 'reportPost';
+            const result = await postRabbitMqClient.produce(data, operation);
+            res.status(200).json(result);
+        } catch (error) {
+            console.log('Error in the reportPost -->', error);
+            return res.status(500).json({ success: false, message: "Error occured while reporting the post" })
+        }
+    },
+
+    deleteImage: async (req: Request, res: Response) => {
+        try {
+            const data = req.body;
+            const operation = 'deleteImage';
+            const result = await postRabbitMqClient.produce(data, operation);
+            res.status(200).json(result)
+        } catch (error) {
+            console.log('Error in the reportPost -->', error);
+            return res.status(500).json({ success: false, message: "Error occured while deleteing the image" })
+        }
+    },
+
     getAllPosts: async (req: Request, res: Response) => {
         try {
             console.log('get all post');
             const page = req.query.page
+            console.log(page, '---------------page in getallpost')
             const operation = 'get-all-posts';
             const result = await postRabbitMqClient.produce(page, operation) as RabbitMQResponse<Post[]>;
 
@@ -113,6 +198,7 @@ export const postController = {
             res.status(500).json({ success: false, message: 'Internal server error' });
         }
     },
+
 
     getUserPosts: async (req: Request, res: Response) => {
         try {
@@ -154,6 +240,169 @@ export const postController = {
         }
     },
 
+    getPost: async (req: Request, res: Response) => {
+        try {
+            const operation = 'getPost';
+
+            const [result, userData]: any = await Promise.all([
+                postRabbitMqClient.produce(req.query.postId, operation),
+                userRabbitMqClient.produce(req.query.userId, 'get-userProfile')
+            ])
+            let post = result.data
+            let user = userData.data
+            const combinedData = {
+                success: result.success,
+                message: 'data fetched success',
+                post,
+                user,
+            };
+
+            // const result = await postRabbitMqClient.produce(req.query.postId, operation);
+            console.log(combinedData)
+            res.status(200).json(combinedData);
+        } catch (error) {
+            console.log('Error in getPost Post Controller');
+        }
+    },
+
+
+    likePost: async (req: Request, res: Response) => {
+        try {
+            console.log(req.body);
+            const data = req.body;
+            const operation = 'likePost';
+            const result: any = await postRabbitMqClient.produce(data, operation);
+
+
+            if (result.success) {
+                const postData: any = await postRabbitMqClient.produce(data.postId, 'getPost');
+                const userData: any = await userRabbitMqClient.produce(data.logged, 'get-userProfile');
+                console.log(userData, 'like like ')
+                console.log(postData)
+                const notification: any = {
+                    userId: data.logged,
+                    senderId: postData.data.data.userId,
+                    type: 'LIKE',
+                    postId: postData.data.data._id,
+                    message: `${userData.data.name} liked your post`,
+                    avatar: userData.data.profilePicture,
+                    userName: userData.data.name
+                }
+                sendNotification(notification);
+            }
+
+
+            res.status(200).json(result);
+        } catch (error) {
+            console.log('error in likePost -->', error)
+        }
+    },
+
+    unlikePost: async (req: Request, res: Response) => {
+        try {
+            console.log(req.body);
+            const data = req.body;
+            const operation = 'unlikePost';
+            const result = await postRabbitMqClient.produce(data, operation);
+            res.status(200).json(result);
+        } catch (error) {
+            console.log('error in likePost -->', error)
+        }
+    },
+
+    comment: async (req: Request, res: Response) => {
+        try {
+            const data = req.body;
+            const operation = 'comment'
+            const result = await postRabbitMqClient.produce(data, operation);
+            res.status(200).json(result);
+        } catch (error) {
+            console.log('Error in teh comment section in postController')
+        }
+    },
+
+    deleteComment: async (req: Request, res: Response) => {
+        try {
+            const data = req.body;
+            const operation = 'deletComment';
+            const result = await postRabbitMqClient.produce(data, operation);
+            res.status(200).json(result)
+        } catch (error) {
+            console.log('Error in the deleteComment -->', error);
+        }
+    },
+
+    findBuddy: async (req: Request, res: Response) => {
+        try {
+            console.log(req.body);
+            console.log(req.files);
+            console.log('find buddy')
+            const data = req.body;
+            const images = req.files as { [fieldname: string]: Express.Multer.File[] } | Express.Multer.File[];
+
+            if (!data.userId) {
+                return res.status(400).json({ success: false, message: 'UserId is missing' });
+            }
+
+            if (images) {
+                let filesArray: Express.Multer.File[] = [];
+                if (Array.isArray(images)) {
+                    filesArray = images;
+                } else {
+                    filesArray = Object.values(images).flat();
+                }
+
+                for (let file of filesArray) {
+                    if (!validImageMimeTypes.includes(file.mimetype)) {
+                        return res.status(400).json({ error: "Only image files are allowed" });
+                    }
+                }
+            }
+
+            const operation = 'findBuddy';
+            const response = await postRabbitMqClient.produce({ data, images }, operation);
+            console.log(response);
+            return res.status(200).json(response);
+
+
+        } catch (error) {
+            console.log('Error in the findBuddy post')
+        }
+    },
+
+    getfindBuddy: async (req: Request, res: Response) => {
+        try {
+            const operation = 'getfindBuddy';
+            const page = req.query.page;
+            const result: any = await postRabbitMqClient.produce(page, operation);
+            console.log(result, 'api data kitti');
+            if (result.success && Array.isArray(result.data)) {
+                const userIds = [...new Set(result.data.map((post: any) => post.userId))]
+                const operation = 'get-user-deatils-for-post';
+
+                const userResponse = (await userRabbitMqClient.produce({ userIds }, operation)) as RabbitMQResponse<User[]>
+
+                if (userResponse.success && Array.isArray(userResponse.data)) {
+                    const userMap = new Map(userResponse.data.map((user) => [user.id, user]));
+                    const combinedData = result.data.map((post: any) => {
+                        const user = userMap.get(post.userId) || null
+                        return { ...post, user };
+                    })
+                    console.log(combinedData, 'combineddAta')
+                    return res.status(200).json({ success: true, data: combinedData });
+                } else {
+                    return res.status(500).json({ success: false, message: 'Error fetching user details' });
+
+                }
+            } else {
+                return res.status(500).json({ success: false, message: 'Error fetching posts' });
+
+            }
+        } catch {
+
+        }
+    },
+
     getlikedPosts: async (req: Request, res: Response) => {
         try {
             console.log(req.body);
@@ -163,5 +412,7 @@ export const postController = {
             res.status(500).json({ success: false, message: 'Internal server error, Try after sometime' })
         }
     },
+
+
 
 }

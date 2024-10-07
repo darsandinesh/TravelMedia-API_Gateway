@@ -5,6 +5,7 @@ import { access } from 'fs';
 interface userPayload {
     id: string,
     email: string
+    role: string
 }
 
 export const generateToken = (user: userPayload) => {
@@ -12,6 +13,7 @@ export const generateToken = (user: userPayload) => {
     const payload = {
         id: user.id,
         email: user.email,
+        role: user.role
     }
 
     const options = {
@@ -20,7 +22,7 @@ export const generateToken = (user: userPayload) => {
 
     const accessToken = jwt.sign(payload, config.jwt_key as string, options);
     const refreshToken = jwt.sign(payload, config.jwt_key as string, { expiresIn: '7d' });
-    return accessToken
+    return { accessToken, refreshToken }
     // return {
     //     acess, re
     // }

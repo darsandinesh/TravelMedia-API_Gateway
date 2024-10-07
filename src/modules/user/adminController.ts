@@ -13,8 +13,8 @@ export const AdminController = {
             const result: any = await adminRabbitMqClient.produce(data, operation);
             console.log(result);
             if (result.success) {
-                const token = generateToken({ id: result.data._id, email: result.data.email });
-                result.token = token;
+                const token = generateToken({ id: result.data._id, email: result.data.email, role: result.data.isAdmin ? 'admin' : 'user' });
+                result.token = token.accessToken;
             }
             console.log(result)
             return res.json({ result });
