@@ -12,5 +12,9 @@ messageRouter.get('/getConversationData', authMiddleware, messageController.getC
 messageRouter.post('/createChatId', authMiddleware, messageController.getChatId);
 messageRouter.get('/getmessages', authMiddleware, messageController.getMessage);
 messageRouter.get('/getNotification',authMiddleware,messageController.getNotification)
+messageRouter.post('/sendImage',authMiddleware,upload.array('images'),messageController.saveImages)
+messageRouter.post('/sendVideo',authMiddleware,upload.array('images'),messageController.saveImages)
+messageRouter.get('/readNotification',authMiddleware,messageController.readNotification)
+
 
 export {messageRouter}

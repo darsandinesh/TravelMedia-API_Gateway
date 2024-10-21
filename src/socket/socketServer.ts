@@ -1,8 +1,6 @@
 import { Server } from 'socket.io';
 import { Server as HttpServer } from 'http';
 import messageRabbitMqClient from '../modules/message/rabbitMQ/client';
-import postRabbitMqClient from '../modules/posts/rabbitMQ/client';
-import userRabbitMqClient from '../modules/user/rabbitMQ/client';
 
 interface User {
     id: string;
@@ -67,6 +65,37 @@ export const initializeSocket = (server: HttpServer) => {
             }
         });
 
+        socket.on('newImages', async (message) => {
+            console.log('Received message', message);
+            io.to(message.chatId).emit('newMessage', message);
+        })
+
+        // video call.
+        socket.on('callUser', ({ userToCall, from, offer, fromId }) => {
+            console.log('CallUser event received:', { userToCall, from, offer, fromId });
+            const receiverSocketId = onlineUsers.get(userToCall) || '';
+            console.log(receiverSocketId, 'hello user to call', userToCall);
+            io.emit('incomingCall', { from: fromId, callerName: from, offer, userToCall });
+        });
+
+        socket.on('signal', (data) => {
+            const { userId, type, candidate, answer, context } = data;
+            if (context === 'webRTC') {
+                io.emit('signal', { type, candidate, answer, userId });
+            }
+        });
+
+        socket.on('callAccepted', ({ userId, answer, context, acceptedBy }) => {
+            if (context === 'webRTC') {
+                io.emit('callAcceptedSignal', { answer, context, userId, acceptedBy });
+            }
+        });
+
+        socket.on('callEnded', (guestId) => {
+            io.emit('callEndedSignal');
+        });
+
+        // disconnect the socket connection. 
         socket.on('disconnect', () => {
             console.log('User disconnected', socket.id);
 
@@ -89,17 +118,10 @@ export const emitUserStatus = (userId: string, isOnline: boolean) => {
     }
 };
 
-// interface notification {
-//     logged:string,
-//     postId?:string,
-// }
-
 export const sendNotification = async (notificationData: any) => {
     console.log('sendNotification triggered in socketio.', notificationData)
     const receiverSocketId = onlineUsers.get(notificationData.senderId);
-
     const notification = await messageRabbitMqClient.produce(notificationData, 'save-notification')
-    console.log(notification)
 
     if (receiverSocketId) {
         io.to(receiverSocketId).emit('newNotification', notificationData);

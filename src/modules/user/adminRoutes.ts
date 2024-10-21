@@ -14,6 +14,7 @@ adminRoutes.get('/userlist', authMiddleware, AdminController.userlist);
 adminRoutes.post('/changeStatus', authMiddleware, AdminController.changeStatus);
 adminRoutes.get('/getNewUsers', authMiddleware, AdminController.getNewUsers);
 adminRoutes.get('/getTotalUsers', authMiddleware, AdminController.getTotalUsers);
+adminRoutes.get('/getUserData',authMiddleware,AdminController.getUserData)
 
 
 

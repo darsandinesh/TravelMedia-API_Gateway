@@ -66,6 +66,16 @@ export const AdminController = {
         } catch (error) {
 
         }
+    },
+
+    getUserData: async (req: Request, res: Response) => {
+        try {
+            const operation = 'getAllUser';
+            const result = await adminRabbitMqClient.produce('', operation);
+            res.json(result)
+        } catch (error) {
+            console.log('Error in the getUserData admin controller -->', error)
+        }
     }
 
 

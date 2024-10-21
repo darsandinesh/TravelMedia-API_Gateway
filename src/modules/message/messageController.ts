@@ -141,6 +141,38 @@ export const messageController = {
             console.log("Error occurred while fetching notification", { error });
             res.status(500).json({ error: "Error occurred while fetching notification" });
         }
-    }
+    },
+
+    saveImages: async (req: Request, res: Response) => {
+        try {
+            console.log('save image')
+            const images = req.files;
+            const chatId = req.query.chatId;
+            const senderId = req.query.senderId;
+            const receiverId = req.query.receiverId;
+
+            if (!senderId || !chatId || !images || !receiverId) {
+                return res.status(400).json({ error: "UserId , receiverId, or imgUrl is missing" });
+            }
+            const operation = 'save-image'
+            const response = await messageRabbitMqClient.produce({ images, senderId, chatId, receiverId }, operation)
+            return res.json(response);
+        } catch (error) {
+            logger.error("Error occurred while saving images in messages", { error });
+            res.status(500).json({ error: "Error occurred while saving images in messages" });
+        }
+    },
+
+    readNotification: async (req: Request, res: Response) => {
+        try {
+            const operation = 'update-Notification';
+            const id = req.query.id;
+            const result = await messageRabbitMqClient.produce(id, operation);
+            return res.status(200).json(res);
+        } catch (error) {
+            logger.error("Error occurred while notification is read images in messages", { error });
+            res.status(500).json({ error: "Error occurred while saving images in messages" });
+        }
+    },
 
 };

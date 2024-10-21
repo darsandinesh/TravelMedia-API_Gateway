@@ -34,6 +34,13 @@ userRoutes.post('/searchUser', authMiddleware, userController.searchUser)
 
 userRoutes.get('/newUsers', authMiddleware, userController.newUsers);
 
+// save liked posts 
+userRoutes.post('/savePost',authMiddleware,userController.savePost)
+
+// membership route 
+userRoutes.get('/membership',authMiddleware,userController.membership);
+userRoutes.post('/savePayment',authMiddleware,userController.savePayment);
+
 // refresh token verification
 userRoutes.post('/refresh-token', userController.refreshToken)
 

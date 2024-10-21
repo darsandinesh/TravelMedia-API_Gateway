@@ -258,6 +258,41 @@ export const userController = {
         }
     },
 
+    savePost: async (req: Request, res: Response) => {
+        try {
+            const operation = 'savePost';
+            const data = req.body
+            const result = await userRabbitMqClient.produce(data, operation);
+            console.log(result)
+        } catch (error) {
+            console.log('Error in the savePost in userController -->', error);
+        }
+    },
+
+    // membership logic
+
+    membership: async (req: Request, res: Response) => {
+        try {
+            const operation = 'membership';
+            const id = req.query.id;
+            const result = await userRabbitMqClient.produce(id, operation);
+            res.status(200).json(result)
+        } catch (error) {
+            console.log('Error in the membership ', error)
+        }
+    },
+
+    savePayment: async (req: Request, res: Response) => {
+        try {
+            const operation = 'savePayment';
+            const data = req.query.session_id;
+            const result = await userRabbitMqClient.produce(data, operation);
+            res.status(200).json(result);
+        } catch (error) {
+
+        }
+    },
+
     refreshToken: async (req: Request, res: Response) => {
         try {
             const { refreshToken } = req.body;

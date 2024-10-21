@@ -20,6 +20,7 @@ postRoutes.get('/getNewPosts', postController.getNewPosts);
 postRoutes.get('/getPost',authMiddleware,postController.getPost)
 postRoutes.put('/editPost',authMiddleware,upload.array('images'),postController.editPost)
 postRoutes.put('/deletePost',authMiddleware,postController.deletePost)
+postRoutes.put('/deletePostAdmin',authMiddleware,postController.deletePostAdmin)
 postRoutes.put('/reportPost',authMiddleware,postController.reportPost)
 postRoutes.put('/deleteImage',authMiddleware,postController.deleteImage);
 

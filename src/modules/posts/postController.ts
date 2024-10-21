@@ -133,6 +133,22 @@ export const postController = {
         }
     },
 
+
+    deletePostAdmin: async (req: Request, res: Response) => {
+        try {
+            const id = req.body.postId;
+            const userId = req.body.userId
+            const operation = 'deletePost';
+            const result:any = await postRabbitMqClient.produce(id, operation);
+            userRabbitMqClient.produce(userId,'sendMsg')
+            res.status(200).json(result);
+
+        } catch (error) {
+            console.log('Error in the deletePost -->', error);
+            return res.status(500).json({ success: false, message: "Error occured while deleting the post" })
+        }
+    },
+
     reportPost: async (req: Request, res: Response) => {
         try {
             const data = req.body;
@@ -208,15 +224,23 @@ export const postController = {
             const id = req.body.id;
 
             // Fetch posts and user data asynchronously
-            const [result, userData] = await Promise.all([
+            const [result, userData]: [any, any] = await Promise.all([
                 postRabbitMqClient.produce(id, operation),
                 userRabbitMqClient.produce(id, 'get-userProfile')
             ]);
 
-            // Combine the result and userData into a single object
+            const savedPosts = [];
+            console.log(userData,'-----------------')
+            if (userData.data.savedPosts && userData.data.savedPosts.length > 0) {
+                console.log('inside the saved posts');
+                const data = await postRabbitMqClient.produce(userData.data.savedPosts, 'getSavedPosts')
+                savedPosts.push(data); 
+            }
+
             const combinedData = {
-                result, // Spread the result object properties
-                userData: userData, // Include userData as a nested object
+                result,
+                userData: userData,
+                savedPosts,
             };
 
             console.log(combinedData, '-----------------------');
