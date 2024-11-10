@@ -2,17 +2,6 @@ import { Server } from 'socket.io';
 import { Server as HttpServer } from 'http';
 import messageRabbitMqClient from '../modules/message/rabbitMQ/client';
 
-interface User {
-    id: string;
-    _id: string;
-}
-
-interface RabbitMQResponse<T> {
-    success: boolean;
-    message: string;
-    data?: T;
-}
-
 let io: Server;
 const onlineUsers = new Map<string, string>();
 
@@ -44,7 +33,6 @@ export const initializeSocket = (server: HttpServer) => {
             console.log('user is typing ', id);
             const receiverSocketId = onlineUsers.get(id) || '';
             socket.to(receiverSocketId).emit('onUserTyping')
-
         })
 
         socket.on('sendMessage', async (message) => {

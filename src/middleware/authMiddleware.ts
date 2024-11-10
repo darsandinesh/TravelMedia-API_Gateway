@@ -1,5 +1,3 @@
-// src/modules/user/authenticateToken.ts
-
 import { NextFunction, Request, Response } from "express";
 import { RequestHandler } from 'express';
 import jwt from 'jsonwebtoken';
@@ -41,7 +39,6 @@ const authenticateToken = (options: AuthMiddlewareOptions): RequestHandler => {
                     next();
                 } else {
                     next();
-                    // return res.status(401).json({ success: false, message: 'Un authorized' });
                 }
             } else {
                 console.log('else in decode value')

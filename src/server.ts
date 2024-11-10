@@ -15,14 +15,13 @@ dotenv.config()
 const app = express();
 
 const corsOptions = {
-    origin: 'http://localhost:5173',
+    origin: process.env.FRONTEND_URL,
     credentials: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     allowedHeaders: 'Content-Type,Authorization',
     preflightContinue: false,
     optionsSuccessStatus: 204
 };
-
 
 app.use(cookieParser());
 app.use(express.json());
@@ -32,7 +31,6 @@ app.use('/admin', adminRoutes);
 app.use('/post', postRoutes);
 app.use('/message', messageRouter);
 app.use('/', userRoutes);
-
 
 
 const server = http.createServer(app);
