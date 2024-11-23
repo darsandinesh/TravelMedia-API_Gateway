@@ -28,6 +28,16 @@ interface data {
     postId?: string;
 }
 
+interface Notification {
+    userId: string,
+    senderId: string,
+    type: string,
+    message: string,
+    avatar: string,
+    userName: string,
+    postId: string
+}
+
 const validImageMimeTypes = ['image/jpeg', 'image/png', 'image/gif'];
 
 export const postController = {
@@ -139,8 +149,8 @@ export const postController = {
             const id = req.body.postId;
             const userId = req.body.userId
             const operation = 'deletePost';
-            const result:any = await postRabbitMqClient.produce(id, operation);
-            userRabbitMqClient.produce(userId,'sendMsg')
+            const result: any = await postRabbitMqClient.produce(id, operation);
+            userRabbitMqClient.produce(userId, 'sendMsg')
             res.status(200).json(result);
 
         } catch (error) {
@@ -173,6 +183,19 @@ export const postController = {
         }
     },
 
+    searchPost: async (req: Request, res: Response) => {
+        try {
+            const operation = 'search_post';
+            console.log(req.body);
+            const result = await postRabbitMqClient.produce(req.body, operation);
+            console.log(result);
+            res.status(200).json(result)
+        } catch (error) {
+            console.log('Error in search Post -->', error);
+            return res.status(500).json({ success: false, message: "Internal Server Error" })
+        }
+    },
+
     getAllPosts: async (req: Request, res: Response) => {
         try {
             console.log('get all post');
@@ -198,7 +221,7 @@ export const postController = {
 
                     // Return combined data in response
                     console.log(combinedData)
-                    return res.status(200).json({ success: true, data: combinedData });
+                    return res.status(200).json({ success: true, data: combinedData, count: result });
                 } else {
                     // Handle case where user data is not available
                     console.error('User data fetch failed or is not an array');
@@ -211,6 +234,37 @@ export const postController = {
             }
         } catch (error) {
             console.error('Error in getAllPosts:', error);
+            res.status(500).json({ success: false, message: 'Internal server error' });
+        }
+    },
+
+    reportedPost: async (req: Request, res: Response) => {
+        try {
+            const page = req.query.page;
+            const operation = 'get-reported-post';
+            const result = await postRabbitMqClient.produce(page, operation) as RabbitMQResponse<any[]>;
+
+            if (result.success && Array.isArray(result.data)) {
+                const userIds = [...new Set(result.data.map((post) => post.userId))];
+                const userOperation = 'get-user-deatils-for-post';
+                const userResponse = (await userRabbitMqClient.produce({ userIds }, userOperation)) as RabbitMQResponse<User[]>;
+
+                if (userResponse.success && Array.isArray(userResponse.data)) {
+                    const userMap = new Map(userResponse.data.map((user) => [user.id, user]));
+
+                    const combinedData = result.data.map((post) => {
+                        const user = userMap.get(post.userId) || null;
+                        return { ...post, user };
+                    })
+
+                    return res.status(200).json({ success: true, data: combinedData, count: result.data });
+                } else {
+                    return res.status(500).json({ success: false, message: 'Error fetching user details' });
+                }
+            } else {
+                res.status(500).json({ success: false, message: 'Error fetching post details' })
+            }
+        } catch (error) {
             res.status(500).json({ success: false, message: 'Internal server error' });
         }
     },
@@ -230,11 +284,11 @@ export const postController = {
             ]);
 
             const savedPosts = [];
-            console.log(userData,'-----------------')
+            console.log(userData, '-----------------')
             if (userData.data.savedPosts && userData.data.savedPosts.length > 0) {
                 console.log('inside the saved posts');
                 const data = await postRabbitMqClient.produce(userData.data.savedPosts, 'getSavedPosts')
-                savedPosts.push(data); 
+                savedPosts.push(data);
             }
 
             const combinedData = {
@@ -303,7 +357,7 @@ export const postController = {
                 const userData: any = await userRabbitMqClient.produce(data.logged, 'get-userProfile');
                 console.log(userData, 'like like ')
                 console.log(postData)
-                const notification: any = {
+                const notification: Notification = {
                     userId: data.logged,
                     senderId: postData.data.data.userId,
                     type: 'LIKE',

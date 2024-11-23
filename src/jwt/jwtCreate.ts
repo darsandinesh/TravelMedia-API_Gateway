@@ -1,6 +1,5 @@
 import jwt from 'jsonwebtoken';
 import config from '../config/config';
-import { access } from 'fs';
 
 interface userPayload {
     id: string,
@@ -23,7 +22,4 @@ export const generateToken = (user: userPayload) => {
     const accessToken = jwt.sign(payload, config.jwt_key as string, options);
     const refreshToken = jwt.sign(payload, config.jwt_key as string, { expiresIn: '7d' });
     return { accessToken, refreshToken }
-    // return {
-    //     acess, re
-    // }
 }

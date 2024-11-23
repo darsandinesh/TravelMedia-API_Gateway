@@ -14,6 +14,7 @@ postRoutes.get('/', (req, res) => {
 
 postRoutes.post('/add-post', authMiddleware, upload.array('files'), postController.addPost);
 postRoutes.get('/getAllPosts',authMiddleware, postController.getAllPosts)
+postRoutes.get('/reportedPost',authMiddleware,postController.reportedPost);
 // postRoutes.get('/getreportPost',authMiddleware, postController.getReportPost)
 postRoutes.post('/getUserPosts', authMiddleware, postController.getUserPosts)
 postRoutes.get('/getNewPosts', postController.getNewPosts);
@@ -23,6 +24,7 @@ postRoutes.put('/deletePost',authMiddleware,postController.deletePost)
 postRoutes.put('/deletePostAdmin',authMiddleware,postController.deletePostAdmin)
 postRoutes.put('/reportPost',authMiddleware,postController.reportPost)
 postRoutes.put('/deleteImage',authMiddleware,postController.deleteImage);
+postRoutes.post('/searchPost',authMiddleware,postController.searchPost)
 
 // find buddy end points 
 postRoutes.post('/findBuddy', authMiddleware, upload.array('files'), postController.findBuddy)

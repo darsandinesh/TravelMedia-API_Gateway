@@ -1,6 +1,8 @@
 import { Server } from 'socket.io';
 import { Server as HttpServer } from 'http';
+import dotenv from 'dotenv';
 import messageRabbitMqClient from '../modules/message/rabbitMQ/client';
+dotenv.config()
 
 let io: Server;
 const onlineUsers = new Map<string, string>();
@@ -8,7 +10,7 @@ const onlineUsers = new Map<string, string>();
 export const initializeSocket = (server: HttpServer) => {
     io = new Server(server, {
         cors: {
-            origin: 'http://localhost:5173',
+            origin: process.env.FRONTEND_URL,
             methods: ['POST', 'GET'],
             credentials: true,
         },
@@ -106,10 +108,20 @@ export const emitUserStatus = (userId: string, isOnline: boolean) => {
     }
 };
 
-export const sendNotification = async (notificationData: any) => {
+interface Notification {
+    userId:string,
+    senderId:string,
+    type:string,
+    message:string,
+    avatar:string,
+    userName:string,
+    postId?:string,
+}
+
+export const sendNotification = async (notificationData: Notification) => {
     console.log('sendNotification triggered in socketio.', notificationData)
     const receiverSocketId = onlineUsers.get(notificationData.senderId);
-    const notification = await messageRabbitMqClient.produce(notificationData, 'save-notification')
+    await messageRabbitMqClient.produce(notificationData, 'save-notification')
 
     if (receiverSocketId) {
         io.to(receiverSocketId).emit('newNotification', notificationData);

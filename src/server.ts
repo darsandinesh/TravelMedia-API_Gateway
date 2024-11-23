@@ -2,6 +2,7 @@ import express from 'express';
 import http from 'http';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
+const morgan = require('morgan');
 import logger from './utils/logger';
 import { userRoutes } from './modules/user/userRoutes'
 import { adminRoutes } from './modules/user/adminRoutes';
@@ -26,11 +27,13 @@ const corsOptions = {
 app.use(cookieParser());
 app.use(express.json());
 app.use(cors(corsOptions));
+app.use(morgan('dev'));
 
 app.use('/admin', adminRoutes);
 app.use('/post', postRoutes);
 app.use('/message', messageRouter);
 app.use('/', userRoutes);
+
 
 
 const server = http.createServer(app);

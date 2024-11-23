@@ -1,13 +1,28 @@
 import express, { Request, Response } from 'express';
 import userRabbitMqClient from './rabbitMQ/client';
 import { generateToken } from '../../jwt/jwtCreate';
-const jwt = require('jsonwebtoken');
-
+import { userClient } from './grpc/client/grpcClient';
+import * as grpc from '@grpc/grpc-js';
 import config from '../../config/config';
 import { emitUserStatus, sendNotification } from '../../socket/socketServer';
+const jwt = require('jsonwebtoken');
+
+interface GrpcError extends Error {
+    details?: string;
+}
+
+interface Notification {
+    userId:string,
+    senderId:string,
+    type:string,
+    message:string,
+    avatar:string,
+    userName:string
+}
+
 
 export const userController = {
-    // Define memory storage object
+
     memoryStorage: {} as { [key: string]: any },
 
     register: async (req: Request, res: Response) => {
@@ -15,14 +30,35 @@ export const userController = {
             const data = req.body;
             const operation = 'register_user';
 
-            console.log(req.body, 'body print');
-
             const result: any = await userRabbitMqClient.produce(data, operation);
             console.log(result, 'register-user');
 
             userController.memoryStorage['user'] = JSON.stringify(result.user_data);
 
             return res.json({ data: result });
+        } catch (error) {
+            console.log('error in register user --> ', error);
+            return res.status(500).json({ error: 'Internal server error' });
+        }
+    },
+
+    grpcregister: async (req: Request, res: Response) => {
+        try {
+            const data = req.body;
+            console.log(data, 'grpc for registeration')
+            userClient.register(data, (error: GrpcError | null, result: any) => {
+                if (error) {
+                    console.error("gRPC error:", error);
+                    return res.status(500).json({
+                        success: false,
+                        message: "Internal Server Error. Please try again later.",
+                        error: error.details || error.message,
+                    });
+                }
+
+                userController.memoryStorage['user'] = JSON.stringify(result.user_data);
+                return res.json({ data: result });
+            })
         } catch (error) {
             console.log('error in register user --> ', error);
             return res.status(500).json({ error: 'Internal server error' });
@@ -58,28 +94,29 @@ export const userController = {
 
     login: async (req: Request, res: Response) => {
         try {
-            console.log(req.body);
             const data = req.body;
-            const operation = 'user_login';
-
-            const result: any = await userRabbitMqClient.produce(data, operation);
-            console.log(result, 'user-login');
-            let role = 'user';
-
-            if (result?.user_data?.isAdmin) role = 'admin'
-
-            if (result.success) {
-                const token = generateToken({ id: result.user_data._id, email: result.user_data.email, role: role });
-                // res.cookie('token', token, { httpOnly: true, maxAge: 3600000 });
-                result.token = token.accessToken;
-                result.refreshToken = token.refreshToken
-                emitUserStatus(result.user_data._id, true)
-                return res.json(result);
-            } else {
-                res.json(result)
-            }
-
-
+            userClient.login(data, (error: GrpcError | null, result: any) => {
+                if (error) {
+                    console.error("gRPC error:", error);
+                    return res.status(500).json({
+                        success: false,
+                        message: "Internal Server Error. Please try again later.",
+                        error: error.details || error.message,
+                    });
+                }
+                console.log(result, '------------response from grpc')
+                let role = 'user';
+                if (result?.user_data?.isAdmin) role = 'admin'
+                if (result && result.success) {
+                    const token = generateToken({ id: result.user_data._id, email: result.user_data.email, role: role });
+                    result.token = token.accessToken;
+                    result.refreshToken = token.refreshToken
+                    emitUserStatus(result.user_data._id, true)
+                    return res.json(result);
+                } else {
+                    res.json(result)
+                }
+            })
         } catch (error) {
             console.log('error in userLogin --> ', error);
             return res.status(500).json({ error: 'Internal server error' });
@@ -151,7 +188,7 @@ export const userController = {
             if (result.success) {
                 const onlineUser: any = await userRabbitMqClient.produce(data.loggeduser, 'get-userProfile');
 
-                const notificaiton: any = {
+                const notificaiton: Notification = {
                     userId: data.loggeduser,
                     senderId: data.followedId,
                     type: 'FOLLOW',
@@ -297,19 +334,14 @@ export const userController = {
         try {
             const { refreshToken } = req.body;
             console.log(refreshToken, 'ref toekn')
-            // Check if the refresh token exists and is valid
             if (!refreshToken) {
                 return res.status(403).json({ message: 'Refresh token not valid' });
             }
-
             // Verify the refresh token
             jwt.verify(refreshToken, config.jwt_key, (err: any, user: any) => {
-                if (err) return res.status(403).json({ message: 'Forbidden' });
 
-                console.log(err, '-----------', user)
-                console.log('refresh token')
-                // Create a new access token
-                const accessToken = jwt.sign({ id: user.id, email: user.email }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '15m' });
+                if (err) return res.status(403).json({ message: 'Forbidden' });
+                const accessToken = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET_KEY, { expiresIn: '15m' });
 
                 res.json({ accessToken });
             });
@@ -318,14 +350,6 @@ export const userController = {
         }
     },
 
-
-    logout: async (req: Request, res: Response) => {
-        try {
-
-        } catch (error) {
-
-        }
-    },
-
-
 };
+
+//----------------------------------------------------------------------------------------------------------------------
